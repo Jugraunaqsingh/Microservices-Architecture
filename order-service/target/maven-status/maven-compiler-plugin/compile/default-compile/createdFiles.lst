@@ -1,6 +1,11 @@
 com\example\order\model\ShippingResponse.class
+com\example\order\config\SecurityConfig.class
 com\example\order\model\OrderAggregateResponse.class
 com\example\order\OrderServiceApplication.class
 com\example\order\service\OrderService.class
+com\example\order\controller\AdminProxyController.class
 com\example\order\controller\OrderController.class
 com\example\order\model\PaymentResponse.class
+com\example\order\model\PlaceOrderRequest.class
+com\example\order\config\CorsConfig.class
+com\example\order\controller\AuthController.class
