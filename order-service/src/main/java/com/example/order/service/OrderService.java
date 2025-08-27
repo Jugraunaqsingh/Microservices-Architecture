@@ -1,0 +1,64 @@
+package com.example.order.service;
+
+import com.example.order.model.PaymentResponse;
+import com.example.order.model.ShippingResponse;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.Instant;
+
+@Service
+public class OrderService {
+
+    private final RestTemplate restTemplate;
+
+    @Value("${service.payment.url}")
+    private String paymentUrl;
+
+    @Value("${service.shipping.url}")
+    private String shippingUrl;
+
+    public OrderService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    // ---- Remote calls wrapped with SEPARATE circuit breakers ----
+
+    @CircuitBreaker(name = "paymentServiceCircuitBreaker", fallbackMethod = "paymentFallback")
+    public PaymentResponse fetchPayment() {
+        ResponseEntity<PaymentResponse> response =
+                restTemplate.getForEntity(paymentUrl, PaymentResponse.class);
+        return response.getBody();
+    }
+
+    @CircuitBreaker(name = "shippingServiceCircuitBreaker", fallbackMethod = "shippingFallback")
+    public ShippingResponse fetchShipping() {
+        ResponseEntity<ShippingResponse> response =
+                restTemplate.getForEntity(shippingUrl, ShippingResponse.class);
+        return response.getBody();
+    }
+
+    // ---- Fallbacks (distinct), MUST match return type and accept Throwable ----
+
+    public PaymentResponse paymentFallback(Throwable t) {
+        PaymentResponse pr = new PaymentResponse();
+        pr.setStatus("PAYMENT_SERVICE_UNAVAILABLE");
+        pr.setMessage("Payment fallback: PaymentService is currently unavailable. Reason: " + t.getClass().getSimpleName());
+        pr.setTimestamp(Instant.now().toString());
+        pr.setTransactionId(null);
+        pr.setAmount(null);
+        return pr;
+    }
+
+    public ShippingResponse shippingFallback(Throwable t) {
+        ShippingResponse sr = new ShippingResponse();
+        sr.setStatus("SHIPPING_SERVICE_UNAVAILABLE");
+        sr.setMessage("Shipping fallback: ShippingService is currently unavailable. Reason: " + t.getClass().getSimpleName());
+        sr.setExpectedDeliveryDate(null);
+        sr.setTrackingId(null);
+        return sr;
+    }
+}
