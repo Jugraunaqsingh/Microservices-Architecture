@@ -1,100 +1,183 @@
-# Multi-Service Spring Boot Workspace with Resilience4j Circuit Breakers
+# 🚀 Microservices with Circuit Breakers + React UI
 
-This workspace contains three independent Spring Boot microservices demonstrating Resilience4j circuit breaker patterns:
+A complete microservices architecture demonstrating **Resilience4j circuit breakers** with a **React frontend** for testing service resilience.
 
-## Services Overview
+## 🏗️ **Architecture Overview**
 
-- **payment-service** (Port 8081) - Handles payment processing
-- **shipping-service** (Port 8082) - Manages shipping information  
-- **order-service** (Port 8080) - Orchestrates orders using both services with circuit breakers
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   React UI      │    │  Order Service  │    │ Payment Service │
+│  (Port 5173)   │◄──►│   (Port 8080)   │◄──►│   (Port 8081)   │
+│                 │    │                 │    │                 │
+│ • Login/Register│    │ • Circuit       │    │ • Admin Toggle  │
+│ • Place Orders  │    │   Breakers      │    │ • Payment Logic │
+│ • Admin Panel   │    │ • Auth + CORS   │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │ Shipping Service│
+                       │   (Port 8082)   │
+                       │                 │
+                       │ • Admin Toggle  │
+                       │ • Shipping Logic│
+                       └─────────────────┘
+```
 
-## Architecture
+## 🎯 **Key Features**
 
-The `order-service` calls both `payment-service` and `shipping-service` over REST using RestTemplate and implements **two separate circuit breakers**:
+- **🔐 Authentication**: Admin (admin/admin) + User self-registration
+- **🔄 Circuit Breakers**: Automatic fallbacks when services fail
+- **🎛️ Admin Controls**: Toggle services on/off at runtime
+- **📱 Modern UI**: React + Vite frontend
+- **🛡️ Security**: Spring Security with role-based access
+- **🌐 CORS**: Frontend can communicate with backend
 
-- `paymentServiceCircuitBreaker` → fallback when PaymentService is down
-- `shippingServiceCircuitBreaker` → fallback when ShippingService is down
+## 🚀 **Quick Start**
 
-Each circuit breaker has its own configuration and fallback method.
+### **1. Start All Services**
 
-## Prerequisites
-
-- Java 17
-- Maven 3.6+
-- Spring Boot 3.3.2
-
-## Build & Run Instructions
-
-### 1. Payment Service
+**Terminal 1 - Payment Service:**
 ```bash
 cd payment-service
 mvn spring-boot:run
 ```
-**Verify**: http://localhost:8081/payment
 
-### 2. Shipping Service  
+**Terminal 2 - Shipping Service:**
 ```bash
 cd shipping-service
 mvn spring-boot:run
 ```
-**Verify**: http://localhost:8082/shipping
 
-### 3. Order Service
+**Terminal 3 - Order Service:**
 ```bash
 cd order-service
 mvn spring-boot:run
 ```
-**Verify**: http://localhost:8080/actuator/health
 
-## Testing Scenarios
+**Terminal 4 - React UI:**
+```bash
+cd ui
+npm install
+npm run dev
+```
 
-### Case 1: All Services UP
-- **GET** http://localhost:8080/place-order
-- **Expected**: JSON with real payment details (status=SUCCESS, transactionId, amount, timestamp) and real shipping details (status=SHIPPED, trackingId, expectedDeliveryDate)
+### **2. Access the Application**
 
-### Case 2: Stop PaymentService (Ctrl+C in its terminal)
-- **GET** http://localhost:8080/place-order  
-- **Expected**: Payment shows fallback with status="PAYMENT_SERVICE_UNAVAILABLE" and fallback message, but shipping remains real details
+- **Frontend**: http://localhost:5173
+- **Order Service**: http://localhost:8080
+- **Payment Service**: http://localhost:8081
+- **Shipping Service**: http://localhost:8082
 
-### Case 3: Stop ShippingService (Ctrl+C in its terminal)
-- **GET** http://localhost:8080/place-order
-- **Expected**: Shipping shows fallback with status="SHIPPING_SERVICE_UNAVAILABLE" and fallback message, but payment remains real details
+## 🧪 **Testing Scenarios**
 
-## Circuit Breaker Monitoring
+### **Scenario 1: All Services Running**
+1. Login as admin (admin/admin) or register a new user
+2. Go to "Place Order" page
+3. Enter amount and address
+4. Click "Place Order"
+5. **Expected**: Real payment + real shipping data
 
-- **Health Check**: http://localhost:8080/actuator/health
-- **Circuit Breakers**: http://localhost:8080/actuator/circuitbreakers
-- **Metrics**: http://localhost:8080/actuator/metrics
+### **Scenario 2: Payment Service Disabled**
+1. Login as admin (admin/admin)
+2. Go to "Admin Dashboard"
+3. Click "Disable" for Payment Service
+4. Go back to "Place Order"
+5. Place an order
+6. **Expected**: Payment fallback + real shipping data
 
-## Circuit Breaker Configuration
+### **Scenario 3: Shipping Service Disabled**
+1. In Admin Dashboard, disable Shipping Service
+2. Place an order
+3. **Expected**: Real payment data + shipping fallback
 
-Each circuit breaker has independent settings:
+## 🔧 **Circuit Breaker Configuration**
 
-- **paymentServiceCircuitBreaker**: 6-call sliding window, 50% failure threshold, 10s open state
-- **shippingServiceCircuitBreaker**: 8-call sliding window, 50% failure threshold, 8s open state
+The circuit breakers are configured to:
+- **Open after 2 failures** (minimum-number-of-calls=2)
+- **Recover after 5 seconds** (wait-duration-in-open-state=5s)
+- **Handle IllegalStateException** when services are disabled
 
-## Project Structure
+## 📁 **Project Structure**
 
 ```
 microservicesDA/
-├── README.md
-├── payment-service/
-│   ├── pom.xml
-│   └── src/main/java/com/example/payment/
-│       ├── PaymentServiceApplication.java
-│       └── controller/PaymentController.java
-├── shipping-service/
-│   ├── pom.xml
-│   └── src/main/java/com/example/shipping/
-│       ├── ShippingServiceApplication.java
-│       └── controller/ShippingController.java
-└── order-service/
-    ├── pom.xml
-    └── src/main/java/com/example/order/
-        ├── OrderServiceApplication.java
-        ├── controller/OrderController.java
-        └── model/
-            ├── PaymentResponse.java
-            ├── ShippingResponse.java
-            └── OrderAggregateResponse.java
+├── order-service/          # Orchestrator with circuit breakers
+│   ├── src/main/java/
+│   │   ├── config/         # Security + CORS config
+│   │   ├── controller/     # Order + Auth + Admin controllers
+│   │   └── model/          # Request/Response models
+│   └── src/main/resources/
+│       └── application.properties  # Circuit breaker config
+├── payment-service/         # Payment microservice
+│   ├── src/main/java/
+│   │   ├── controller/     # Payment + Admin controllers
+│   │   └── service/        # Service toggle
+│   └── src/main/resources/
+│       └── application.properties
+├── shipping-service/        # Shipping microservice
+│   ├── src/main/java/
+│   │   ├── controller/     # Shipping + Admin controllers
+│   │   └── service/        # Service toggle
+│   └── src/main/resources/
+│       └── application.properties
+└── ui/                     # React frontend
+    ├── src/pages/
+    │   └── App.jsx         # Main application
+    ├── package.json
+    └── vite.config.js
 ```
+
+## 🔐 **Authentication**
+
+- **Admin**: `admin` / `admin` (ROLE_ADMIN)
+- **Users**: Self-register through UI (ROLE_USER)
+- **Admin-only endpoints**: `/admin/**` (service control)
+
+## 🎛️ **Admin Endpoints**
+
+- **Enable/Disable Payment**: `POST /admin/payment/enable|disable`
+- **Enable/Disable Shipping**: `POST /admin/shipping/enable|disable`
+- **Service Status**: `GET /admin/payment/status`, `GET /admin/shipping/status`
+
+## 📊 **Monitoring**
+
+- **Circuit Breaker Health**: `GET /actuator/health` (Basic auth required)
+- **Circuit Breaker Metrics**: `GET /actuator/metrics/resilience4j.circuitbreaker.calls`
+
+## 🚨 **Troubleshooting**
+
+### **Circuit Breaker Not Working**
+1. Ensure services are restarted after configuration changes
+2. Check that `@CircuitBreaker` methods are public
+3. Verify Resilience4j dependencies are included
+
+### **CORS Issues**
+1. Ensure CORS config allows `http://localhost:5173`
+2. Check that CORS filter is properly configured
+
+### **Authentication Issues**
+1. Verify Spring Security is properly configured
+2. Check that admin credentials are correct
+3. Ensure endpoints have proper security annotations
+
+## 🎉 **Success Indicators**
+
+- ✅ Circuit breakers open when services are disabled
+- ✅ Fallback responses are returned
+- ✅ Admin can toggle services on/off
+- ✅ Users can place orders with custom amounts/addresses
+- ✅ UI shows real-time service status
+- ✅ Authentication works for both admin and regular users
+
+## 🔮 **Next Steps**
+
+- Add database persistence for orders
+- Implement more sophisticated fallback strategies
+- Add metrics and monitoring dashboards
+- Implement service discovery and load balancing
+- Add more comprehensive error handling
+
+---
+
+**Happy Testing! 🚀** The circuit breakers will now work properly with the UI-driven service toggles!
